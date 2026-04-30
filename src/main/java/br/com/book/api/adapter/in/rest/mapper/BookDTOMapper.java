@@ -12,7 +12,6 @@ import jakarta.inject.Inject;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,34 +23,44 @@ public class BookDTOMapper {
 
     @PostConstruct
     void configure() {
-        // Configuração para evitar problemas com listas
+
         modelMapper.getConfiguration()
                 .setMatchingStrategy(MatchingStrategies.STRICT)
                 .setFieldMatchingEnabled(true)
                 .setSkipNullEnabled(true)
                 .setAmbiguityIgnored(true);
 
-        // Mapeamento específico para BookCreateRequest → Book
-        modelMapper.createTypeMap(BookCreateRequest.class, Book.class)
-                .setProvider(request -> new Book())
-                .setPostConverter(context -> {
-                    Book book = context.getDestination();
-                    if (book.getAuthors() == null) {
-                        book.setAuthors(new ArrayList<>());
-                    }
-                    if (book.getCategories() == null) {
-                        book.setCategories(new ArrayList<>());
-                    }
-                    return book;
+        // ✔️ Map simples de request → domain (SEM RELAÇÕES JPA DIRETAS)
+        modelMapper.typeMap(BookCreateRequest.class, Book.class)
+                .addMappings(mapper -> {
+                    mapper.skip(Book::setAuthors);
+                    mapper.skip(Book::setCategories);
+                });
+
+        modelMapper.typeMap(BookUpdateRequest.class, Book.class)
+                .addMappings(mapper -> {
+                    mapper.skip(Book::setAuthors);
+                    mapper.skip(Book::setCategories);
                 });
     }
 
+    // =========================
+    // RESPONSE
+    // =========================
     public BookResponse toResponse(Book book) {
         return modelMapper.map(book, BookResponse.class);
     }
 
+    // =========================
+    // DOMAIN (SEM RELAÇÕES JPA)
+    // =========================
     public Book toDomain(BookCreateRequest request) {
-        return modelMapper.map(request, Book.class);
+        Book book = modelMapper.map(request, Book.class);
+
+        book.setAuthors(List.of());
+        book.setCategories(List.of());
+
+        return book;
     }
 
     public CreateBookUseCase.CreateBookCommand toCreateCommand(BookCreateRequest request) {

@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public interface CreateBookUseCase {
 
@@ -25,5 +27,8 @@ public interface CreateBookUseCase {
         private String synopsis;
         private Integer stockQuantity;
         private Long publisherId;
+
+        // 🔥 ADICIONAR ESTA LINHA 🔥
+        private List<Long> authorIds = new ArrayList<>();  // IDs dos autores
     }
 }

@@ -12,7 +12,10 @@ import br.com.book.api.shared.exception.ResourceNotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Transactional
@@ -39,14 +42,25 @@ public class BookServiceImpl implements
     // ========== CreateBookUseCase ==========
     @Override
     public Book execute(CreateBookCommand command) {
-        if (bookRepositoryPort.existsBookByIsbn(command.getIsbn())) {  // ← corrigido
+
+        if (bookRepositoryPort.existsBookByIsbn(command.getIsbn())) {
             throw new RuntimeException("Book already exists with ISBN: " + command.getIsbn());
         }
 
         Publisher publisher = null;
         if (command.getPublisherId() != null) {
-            publisher = publisherRepositoryPort.findPublisherById(command.getPublisherId())  // ← verifique este método
+            publisher = publisherRepositoryPort.findPublisherById(command.getPublisherId())
                     .orElseThrow(() -> new ResourceNotFoundException("Publisher", command.getPublisherId()));
+        }
+
+        // 🔥 BUSCAR AUTORES PELOS IDs
+        List<Author> authors = new ArrayList<>();
+        if (command.getAuthorIds() != null && !command.getAuthorIds().isEmpty()) {
+            for (Long authorId : command.getAuthorIds()) {
+                Author author = authorRepositoryPort.findAuthorById(authorId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Author", authorId));
+                authors.add(author);
+            }
         }
 
         Book book = new Book();
@@ -60,6 +74,8 @@ public class BookServiceImpl implements
         book.setSynopsis(command.getSynopsis());
         book.setStockQuantity(command.getStockQuantity());
         book.setPublisher(publisher);
+        book.setAuthors(authors);  // 🔥 SETAR AUTORES BUSCADOS
+        book.setCategories(new ArrayList<>());  // Inicializar vazio
 
         return bookRepositoryPort.save(book);
     }

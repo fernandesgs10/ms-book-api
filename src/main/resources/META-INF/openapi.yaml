@@ -62,8 +62,8 @@ paths:
             schema:
               $ref: '#/components/schemas/BookCreateRequest'
             examples:
-              withPublisher:
-                summary: "Livro com editora existente"
+              withPublisherAndAuthors:
+                summary: "Livro com editora e autores existentes"
                 value:
                   title: "Clean Code"
                   subtitle: "Um guia prático para código limpo"
@@ -75,6 +75,7 @@ paths:
                   synopsis: "Um guia prático para escrever código de qualidade"
                   stockQuantity: 10
                   publisherId: 1
+                  authorIds: [1, 2]
               withoutPublisher:
                 summary: "Livro sem editora"
                 value:
@@ -88,6 +89,7 @@ paths:
                   synopsis: "Um guia para arquitetura de software"
                   stockQuantity: 5
                   publisherId: null
+                  authorIds: [1]
       responses:
         '201':
           description: Livro criado com sucesso
@@ -1166,12 +1168,20 @@ components:
           format: int64
           nullable: true
           example: 1
-          description: "ID da editora (1=Pearson, 2=Campus, 3=Saraiva). Pode ser null."
+          description: "ID da editora"
+        authorIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          example: [ 1, 2 ]
+          description: "Lista de IDs dos autores (devem existir previamente)"
       example:
         title: "Clean Code"
         isbn: "9780132350884"
         publicationYear: 2008
         publisherId: 1
+        authorIds: [ 1, 2 ]
 
     BookUpdateRequest:
       type: object
