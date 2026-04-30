@@ -20,7 +20,6 @@ bin/
 *.ipr
 *.iml
 *.iws
-out/
 
 # NetBeans
 nb-configuration.xml
@@ -50,9 +49,6 @@ Thumbs.db
 # Docker overrides (caso use depois)
 docker-compose.override.yml
 
-# Temporary files
-tmp/
-temp/
 
 # Plugin directory
 /.quarkus/cli/plugins/
