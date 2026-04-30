@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-book-api
+  labels:
+    app: ms-book-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-book-api
+  template:
+    metadata:
+      labels:
+        app: ms-book-api
+    spec:
+      containers:
+        - name: app
+          image: ms-book-api-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            # =========================
+            # DATABASE
+            # =========================
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: "jdbc:mysql://host.minikube.internal:3306/quarkus_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+            - name: QUARKUS_DATASOURCE_USERNAME
+              value: "root"
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              value: "root123"
+            # =========================
+            # ZEEBE
+            # =========================
+            - name: ZEEBE_CLIENT_BROKER_GATEWAYADDRESS
+              value: "host.minikube.internal:26500"
+            - name: ZEEBE_CLIENT_SECURITY_PLAINTEXT
+              value: "true"
+          # =========================
+          # RESOURCES
+          # =========================
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # =========================
+          # HEALTH CHECKS
+          # =========================
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5

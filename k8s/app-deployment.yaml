@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-book-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-book-api
+  template:
+    metadata:
+      labels:
+        app: ms-book-api
+    spec:
+      initContainers:
+        - name: wait-zeebe
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              echo "Aguardando Zeebe em zeebe-service:26500..."
+              until nc -z zeebe-service 26500; do
+                echo "Zeebe não está pronto. Aguardando..."
+                sleep 2
+              done
+              echo "Zeebe está pronto!"
+      containers:
+        - name: app
+          image: ms-book-api-app:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: "jdbc:mysql://mysql-service:3306/quarkus_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+            - name: QUARKUS_DATASOURCE_USERNAME
+              value: "root"
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              value: "root123"
+            - name: ZEEBE_ADDRESS
+              value: "zeebe-service:26500"
+            - name: ZEEBE_CLIENT_BROKER_GATEWAYADDRESS
+              value: "zeebe-service:26500"
+            - name: ZEEBE_CLIENT_SECURITY_PLAINTEXT
+              value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-book-api-service
+spec:
+  selector:
+    app: ms-book-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: LoadBalancer

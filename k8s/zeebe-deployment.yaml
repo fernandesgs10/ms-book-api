@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeebe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zeebe
+  template:
+    metadata:
+      labels:
+        app: zeebe
+    spec:
+      containers:
+        - name: zeebe
+          image: camunda/zeebe:8.5.0
+          ports:
+            - containerPort: 26500
+            - containerPort: 9600
+          env:
+            - name: ZEEBE_BROKER_NETWORK_HOST
+              value: "0.0.0.0"
+            - name: ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_MODE
+              value: "none"
+          readinessProbe:
+            tcpSocket:
+              port: 26500
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 26500
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeebe-service
+spec:
+  selector:
+    app: zeebe
+  ports:
+    - name: grpc
+      port: 26500
+      targetPort: 26500
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-book-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ms-book-api
+  template:
+    metadata:
+      labels:
+        app: ms-book-api
+    spec:
+      initContainers:
+        - name: wait-zeebe
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              echo "Aguardando Zeebe em zeebe-service:26500..."
+              until nc -z zeebe-service 26500; do
+                echo "Zeebe não está pronto. Aguardando..."
+                sleep 2
+              done
+              echo "Zeebe está pronto!"
+
+      containers:
+        - name: app
+          image: ms-book-api-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+
+          env:
+            # =========================
+            # DATABASE
+            # =========================
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: "jdbc:mysql://mysql-service:3306/quarkus_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+            - name: QUARKUS_DATASOURCE_USERNAME
+              value: "root"
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              value: "root123"
+
+            # =========================
+            # ZEEBE (CORRIGIDO AQUI)
+            # =========================
+            - name: ZEEBE_CLIENT_BROKER_GATEWAY_ADDRESS
+              value: "zeebe-service:26500"
+
+            - name: ZEEBE_CLIENT_SECURITY_PLAINTEXT
+              value: "true"
+
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-book-api-service
+spec:
+  selector:
+    app: ms-book-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: LoadBalancer

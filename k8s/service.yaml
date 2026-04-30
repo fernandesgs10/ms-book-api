@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-book-api-service
+  labels:
+    app: ms-book-api
+spec:
+  selector:
+    app: ms-book-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  type: LoadBalancer

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+
+  <bpmn:process id="book-loan-process" name="Book Loan Process" isExecutable="true">
+
+    <bpmn:startEvent id="start" name="Loan Request">
+      <bpmn:outgoing>flow1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:sequenceFlow id="flow1" sourceRef="start" targetRef="processLoanTask"/>
+
+    <bpmn:serviceTask id="processLoanTask" name="Process Loan Task">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="process-loan" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>flow1</bpmn:incoming>
+      <bpmn:outgoing>flow2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sequenceFlow id="flow2" sourceRef="processLoanTask" targetRef="end"/>
+
+    <bpmn:endEvent id="end" name="Loan Completed">
+      <bpmn:incoming>flow2</bpmn:incoming>
+    </bpmn:endEvent>
+
+  </bpmn:process>
+
+</bpmn:definitions>

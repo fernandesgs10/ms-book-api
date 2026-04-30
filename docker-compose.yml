@@ -1,90 +1,76 @@
-version: '3.8'
+version: "3.9"
 
 services:
-
-  mysql:
+  quarkus-mysql:
     image: mysql:8.0
-    container_name: quarkus-mysql-permanente
-    ports:
-      - "3306:3306"
+    container_name: quarkus-mysql
+    restart: always
     environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: quarkus_db
       MYSQL_USER: quarkus_user
       MYSQL_PASSWORD: quarkus_pass
-      MYSQL_DATABASE: quarkus_db
-      MYSQL_ROOT_PASSWORD: root123
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./mysql-init:/docker-entrypoint-initdb.d
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysql", "-u", "quarkus_user", "-pquarkus_pass", "-e", "SELECT 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 40s
     networks:
-      - quarkus-network
+      - app-network
 
   zeebe:
     image: camunda/zeebe:8.5.0
-    container_name: zeebe-broker
+    container_name: zeebe
+    restart: always
+    environment:
+      ZEEBE_BROKER_GATEWAY_SECURITY_AUTHENTICATION_MODE: none
     ports:
       - "26500:26500"
       - "9600:9600"
-    environment:
-      ZEEBE_BROKER_NETWORK_HOST: 0.0.0.0
-      ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME: io.camunda.zeebe.exporter.ElasticsearchExporter
-      ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL: http://elasticsearch:9200
-    volumes:
-      - zeebe-data:/usr/local/zeebe/data
-    depends_on:
-      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/26500' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
     networks:
-      - quarkus-network
+      - app-network
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
-    container_name: camunda-elasticsearch
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    ports:
-      - "9200:9200"
-    volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
-    networks:
-      - quarkus-network
-
-  operate:
-    image: camunda/operate:8.5.0
-    container_name: camunda-operate
-    ports:
-      - "8082:8080"
-    environment:
-      CAMUNDA_OPERATE_ZEEBE_GATEWAYADDRESS: zeebe:26500
-      CAMUNDA_OPERATE_ELASTICSEARCH_URL: http://elasticsearch:9200
+  ms-book-api:
+    build: .
+    container_name: ms-book-api
+    restart: always
     depends_on:
-      - zeebe
-      - elasticsearch
-    networks:
-      - quarkus-network
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: quarkus-phpmyadmin
-    ports:
-      - "8081:80"
+      quarkus-mysql:
+        condition: service_healthy
+      zeebe:
+        condition: service_healthy
     environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-    depends_on:
-      - mysql
+      # =========================
+      # DATABASE
+      # =========================
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:mysql://quarkus-mysql:3306/quarkus_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      QUARKUS_DATASOURCE_USERNAME: quarkus_user
+      QUARKUS_DATASOURCE_PASSWORD: quarkus_pass
+
+      # =========================
+      # ZEEBE
+      # =========================
+      ZEEBE_CLIENT_BROKER_GATEWAY_ADDRESS: zeebe:26500
+      ZEEBE_CLIENT_SECURITY_PLAINTEXT: "true"
+
+      # =========================
+      # APLICAÇÃO
+      # =========================
+      PORT: 8080
+    ports:
+      - "8080:8080"
     networks:
-      - quarkus-network
+      - app-network
 
 networks:
-  quarkus-network:
+  app-network:
     driver: bridge
-
-volumes:
-  mysql-data:
-  zeebe-data:
-  elasticsearch-data:

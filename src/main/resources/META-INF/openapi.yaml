@@ -1,0 +1,1664 @@
+openapi: 3.0.3
+info:
+  title: Book Management API
+  description: API para gerenciamento de biblioteca com livros, autores, categorias, editoras, usuários, empréstimos e avaliações
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@bookapi.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+tags:
+  - name: Books
+    description: Operações relacionadas a livros
+  - name: Authors
+    description: Operações relacionadas a autores
+  - name: Categories
+    description: Operações relacionadas a categorias
+  - name: Publishers
+    description: Operações relacionadas a editoras
+  - name: Users
+    description: Operações relacionadas a usuários
+  - name: Loans
+    description: Operações relacionadas a empréstimos
+  - name: Reviews
+    description: Operações relacionadas a avaliações
+
+paths:
+  # ========== BOOKS ==========
+  /books:
+    get:
+      tags:
+        - Books
+      summary: Lista todos os livros
+      operationId: getAllBooks
+      parameters:
+        - name: title
+          in: query
+          schema:
+            type: string
+          description: Filtra por título (parcial)
+      responses:
+        '200':
+          description: Lista de livros retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookResponse'
+    post:
+      tags:
+        - Books
+      summary: Cria um novo livro
+      operationId: createBook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreateRequest'
+            examples:
+              withPublisher:
+                summary: "Livro com editora existente"
+                value:
+                  title: "Clean Code"
+                  subtitle: "Um guia prático para código limpo"
+                  isbn: "9780132350884"
+                  publicationYear: 2008
+                  numberOfPages: 464
+                  price: 89.90
+                  edition: 1
+                  synopsis: "Um guia prático para escrever código de qualidade"
+                  stockQuantity: 10
+                  publisherId: 1
+              withoutPublisher:
+                summary: "Livro sem editora"
+                value:
+                  title: "Arquitetura Limpa"
+                  subtitle: "O Guia do Artesão para Estrutura de Software"
+                  isbn: "9780134494166"
+                  publicationYear: 2017
+                  numberOfPages: 432
+                  price: 109.90
+                  edition: 1
+                  synopsis: "Um guia para arquitetura de software"
+                  stockQuantity: 5
+                  publisherId: null
+      responses:
+        '201':
+          description: Livro criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+        '400':
+          description: Dados inválidos
+        '409':
+          description: ISBN já existe
+
+  /books/{id}:
+    get:
+      tags:
+        - Books
+      summary: Busca livro por ID
+      operationId: getBookById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: Livro encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+        '404':
+          description: Livro não encontrado
+    put:
+      tags:
+        - Books
+      summary: Atualiza um livro
+      operationId: updateBook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookUpdateRequest'
+      responses:
+        '200':
+          description: Livro atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+        '404':
+          description: Livro não encontrado
+    delete:
+      tags:
+        - Books
+      summary: Remove um livro
+      operationId: deleteBook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '204':
+          description: Livro removido com sucesso
+        '404':
+          description: Livro não encontrado
+
+  /books/isbn/{isbn}:
+    get:
+      tags:
+        - Books
+      summary: Busca livro por ISBN
+      operationId: getBookByIsbn
+      parameters:
+        - name: isbn
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Livro encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookResponse'
+        '404':
+          description: Livro não encontrado
+
+  /books/available:
+    get:
+      tags:
+        - Books
+      summary: Lista livros disponíveis (com estoque > 0)
+      operationId: getAvailableBooks
+      responses:
+        '200':
+          description: Lista de livros disponíveis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookResponse'
+
+  /books/{bookId}/authors/{authorId}:
+    post:
+      tags:
+        - Books
+      summary: Adiciona um autor ao livro
+      operationId: addAuthorToBook
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: authorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Autor adicionado com sucesso
+        '404':
+          description: Livro ou autor não encontrado
+    delete:
+      tags:
+        - Books
+      summary: Remove um autor do livro
+      operationId: removeAuthorFromBook
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: authorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Autor removido com sucesso
+        '404':
+          description: Livro ou autor não encontrado
+
+  /books/{bookId}/stock/increment:
+    post:
+      tags:
+        - Books
+      summary: Incrementa o estoque de um livro
+      operationId: incrementStock
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+                  example: 5
+      responses:
+        '204':
+          description: Estoque incrementado com sucesso
+
+  /books/{bookId}/stock/decrement:
+    post:
+      tags:
+        - Books
+      summary: Decrementa o estoque de um livro
+      operationId: decrementStock
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+                  example: 1
+      responses:
+        '204':
+          description: Estoque decrementado com sucesso
+        '400':
+          description: Estoque insuficiente
+
+  # ========== AUTHORS ==========
+  /authors:
+    get:
+      tags:
+        - Authors
+      summary: Lista todos os autores
+      operationId: getAllAuthors
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+          description: Filtra por nome
+        - name: nationality
+          in: query
+          schema:
+            type: string
+          description: Filtra por nacionalidade
+      responses:
+        '200':
+          description: Lista de autores retornada
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuthorResponse'
+    post:
+      tags:
+        - Authors
+      summary: Cria um novo autor
+      operationId: createAuthor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorCreateRequest'
+      responses:
+        '201':
+          description: Autor criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorResponse'
+
+  /authors/{id}:
+    get:
+      tags:
+        - Authors
+      summary: Busca autor por ID
+      operationId: getAuthorById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Autor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorResponse'
+    put:
+      tags:
+        - Authors
+      summary: Atualiza um autor
+      operationId: updateAuthor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorUpdateRequest'
+      responses:
+        '200':
+          description: Autor atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorResponse'
+    delete:
+      tags:
+        - Authors
+      summary: Remove um autor
+      operationId: deleteAuthor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Autor removido
+
+  # ========== CATEGORIES ==========
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Lista todas as categorias
+      operationId: getAllCategories
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+    post:
+      tags:
+        - Categories
+      summary: Cria uma nova categoria
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateRequest'
+      responses:
+        '201':
+          description: Categoria criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+
+  /categories/{id}:
+    get:
+      tags:
+        - Categories
+      summary: Busca categoria por ID
+      operationId: getCategoryById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Categoria encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+    put:
+      tags:
+        - Categories
+      summary: Atualiza uma categoria
+      operationId: updateCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdateRequest'
+      responses:
+        '200':
+          description: Categoria atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+    delete:
+      tags:
+        - Categories
+      summary: Remove uma categoria
+      operationId: deleteCategory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Categoria removida
+
+  # ========== PUBLISHERS ==========
+  /publishers:
+    get:
+      tags:
+        - Publishers
+      summary: Lista todas as editoras
+      operationId: getAllPublishers
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de editoras
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublisherResponse'
+    post:
+      tags:
+        - Publishers
+      summary: Cria uma nova editora
+      operationId: createPublisher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublisherCreateRequest'
+      responses:
+        '201':
+          description: Editora criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublisherResponse'
+
+  /publishers/{id}:
+    get:
+      tags:
+        - Publishers
+      summary: Busca editora por ID
+      operationId: getPublisherById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Editora encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublisherResponse'
+    put:
+      tags:
+        - Publishers
+      summary: Atualiza uma editora
+      operationId: updatePublisher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublisherUpdateRequest'
+      responses:
+        '200':
+          description: Editora atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublisherResponse'
+    delete:
+      tags:
+        - Publishers
+      summary: Remove uma editora
+      operationId: deletePublisher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Editora removida
+
+  # ========== USERS ==========
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Lista todos os usuários
+      operationId: getAllUsers
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Lista de usuários
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+    post:
+      tags:
+        - Users
+      summary: Cria um novo usuário
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Busca usuário por ID
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    put:
+      tags:
+        - Users
+      summary: Atualiza um usuário
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    delete:
+      tags:
+        - Users
+      summary: Remove um usuário
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Usuário removido
+
+  /users/{id}/activate:
+    post:
+      tags:
+        - Users
+      summary: Ativa um usuário
+      operationId: activateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Usuário ativado
+
+  /users/{id}/deactivate:
+    post:
+      tags:
+        - Users
+      summary: Desativa um usuário
+      operationId: deactivateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Usuário desativado
+
+  /users/email/{email}:
+    get:
+      tags:
+        - Users
+      summary: Busca usuário por email
+      operationId: getUserByEmail
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /users/cpf/{cpf}:
+    get:
+      tags:
+        - Users
+      summary: Busca usuário por CPF
+      operationId: getUserByCpf
+      parameters:
+        - name: cpf
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  # ========== LOANS ==========
+  /loans:
+    get:
+      tags:
+        - Loans
+      summary: Lista todos os empréstimos
+      operationId: getAllLoans
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: bookId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - ACTIVE
+              - RETURNED
+              - OVERDUE
+              - LOST
+      responses:
+        '200':
+          description: Lista de empréstimos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoanResponse'
+    post:
+      tags:
+        - Loans
+      summary: Solicita um novo empréstimo (inicia processo no Camunda)
+      operationId: createLoan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoanCreateRequest'
+      responses:
+        '202':
+          description: Solicitação recebida e em processamento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateLoan202Response'
+
+  /loans/{id}:
+    get:
+      tags:
+        - Loans
+      summary: Busca empréstimo por ID
+      operationId: getLoanById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Empréstimo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanResponse'
+
+  /loans/{id}/return:
+    post:
+      tags:
+        - Loans
+      summary: Registra a devolução de um livro
+      operationId: returnLoan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Devolução registrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoanResponse'
+
+  /loans/overdue:
+    get:
+      tags:
+        - Loans
+      summary: Lista empréstimos atrasados
+      operationId: getOverdueLoans
+      responses:
+        '200':
+          description: Lista de empréstimos atrasados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoanResponse'
+
+  # ========== REVIEWS ==========
+  /reviews:
+    post:
+      tags:
+        - Reviews
+      summary: Cria uma avaliação para um livro
+      operationId: createReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreateRequest'
+      responses:
+        '201':
+          description: Avaliação criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+
+  /reviews/{id}:
+    get:
+      tags:
+        - Reviews
+      summary: Busca avaliação por ID
+      operationId: getReviewById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Avaliação encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+    put:
+      tags:
+        - Reviews
+      summary: Atualiza uma avaliação
+      operationId: updateReview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdateRequest'
+      responses:
+        '200':
+          description: Avaliação atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+    delete:
+      tags:
+        - Reviews
+      summary: Remove uma avaliação
+      operationId: deleteReview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Avaliação removida
+
+  /reviews/book/{bookId}:
+    get:
+      tags:
+        - Reviews
+      summary: Lista avaliações de um livro
+      operationId: getReviewsByBook
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Lista de avaliações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReviewResponse'
+
+  /reviews/book/{bookId}/rating:
+    get:
+      tags:
+        - Reviews
+      summary: Retorna a média das avaliações de um livro
+      operationId: getAverageRating
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Média de avaliações
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookId:
+                    type: integer
+                    format: int64
+                    example: 1
+                  averageRating:
+                    type: number
+                    format: double
+                    example: 4.5
+
+components:
+  schemas:
+    # ========== BOOK SCHEMAS ==========
+    BookResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        title:
+          type: string
+          example: "Clean Code"
+        subtitle:
+          type: string
+          example: "Um guia prático para código limpo"
+        isbn:
+          type: string
+          example: "9780132350884"
+        publicationYear:
+          type: integer
+          example: 2008
+        numberOfPages:
+          type: integer
+          example: 464
+        price:
+          type: number
+          format: double
+          example: 89.90
+        edition:
+          type: integer
+          example: 1
+        synopsis:
+          type: string
+          example: "Um guia prático para escrever código de qualidade"
+        stockQuantity:
+          type: integer
+          example: 10
+        publisher:
+          $ref: '#/components/schemas/PublisherSummary'
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorSummary'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+        averageRating:
+          type: number
+          format: double
+          example: 4.5
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BookCreateRequest:
+      type: object
+      required:
+        - title
+        - isbn
+        - publicationYear
+      properties:
+        title:
+          type: string
+          example: "Clean Code"
+          description: "Título do livro"
+        subtitle:
+          type: string
+          example: "Um guia prático para código limpo"
+          description: "Subtítulo do livro"
+        isbn:
+          type: string
+          example: "9780132350884"
+          description: "ISBN do livro (código único)"
+        publicationYear:
+          type: integer
+          example: 2008
+          description: "Ano de publicação"
+        numberOfPages:
+          type: integer
+          example: 464
+          description: "Número de páginas"
+        price:
+          type: number
+          format: double
+          example: 89.90
+          description: "Preço do livro"
+        edition:
+          type: integer
+          example: 1
+          description: "Edição do livro"
+        synopsis:
+          type: string
+          example: "Um guia prático para escrever código de qualidade"
+          description: "Sinopse do livro"
+        stockQuantity:
+          type: integer
+          example: 10
+          description: "Quantidade em estoque"
+        publisherId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+          description: "ID da editora (1=Pearson, 2=Campus, 3=Saraiva). Pode ser null."
+      example:
+        title: "Clean Code"
+        isbn: "9780132350884"
+        publicationYear: 2008
+        publisherId: 1
+
+    BookUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Clean Code - Edição Especial"
+        subtitle:
+          type: string
+          example: "Um guia prático para código limpo"
+        isbn:
+          type: string
+          example: "9780132350884"
+        publicationYear:
+          type: integer
+          example: 2008
+        numberOfPages:
+          type: integer
+          example: 480
+        price:
+          type: number
+          format: double
+          example: 99.90
+        edition:
+          type: integer
+          example: 2
+        synopsis:
+          type: string
+          example: "Nova edição com conteúdo atualizado"
+        stockQuantity:
+          type: integer
+          example: 15
+        publisherId:
+          type: integer
+          format: int64
+          nullable: true
+          example: 2
+
+    # ========== AUTHOR SCHEMAS ==========
+    AuthorResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Robert C. Martin"
+        nationality:
+          type: string
+          example: "Americano"
+        birthDate:
+          type: string
+          format: date
+          example: "1952-12-05"
+        biography:
+          type: string
+          example: "Conhecido como Uncle Bob, é um especialista em programação"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AuthorSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Robert C. Martin"
+
+    AuthorCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Robert C. Martin"
+        nationality:
+          type: string
+          example: "Americano"
+        birthDate:
+          type: string
+          format: date
+          example: "1952-12-05"
+        biography:
+          type: string
+          example: "Conhecido como Uncle Bob"
+
+    AuthorUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Robert C. Martin"
+        nationality:
+          type: string
+          example: "Americano"
+        birthDate:
+          type: string
+          format: date
+          example: "1952-12-05"
+        biography:
+          type: string
+          example: "Conhecido como Uncle Bob - atualizado"
+
+    # ========== CATEGORY SCHEMAS ==========
+    CategoryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Tecnologia"
+        description:
+          type: string
+          example: "Livros técnicos de programação"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CategorySummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Tecnologia"
+
+    CategoryCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Tecnologia"
+        description:
+          type: string
+          example: "Livros técnicos de programação"
+
+    CategoryUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Tecnologia da Informação"
+        description:
+          type: string
+          example: "Livros técnicos de TI"
+
+    # ========== PUBLISHER SCHEMAS ==========
+    PublisherResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Editora Pearson"
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        city:
+          type: string
+          example: "São Paulo"
+        state:
+          type: string
+          example: "SP"
+        website:
+          type: string
+          example: "www.pearson.com.br"
+        description:
+          type: string
+          example: "Editora especializada em tecnologia"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PublisherSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "Editora Pearson"
+
+    PublisherCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Editora Pearson"
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        city:
+          type: string
+          example: "São Paulo"
+        state:
+          type: string
+          example: "SP"
+        website:
+          type: string
+          example: "www.pearson.com.br"
+        description:
+          type: string
+          example: "Editora especializada em tecnologia"
+
+    PublisherUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Editora Pearson Tech"
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        city:
+          type: string
+          example: "São Paulo"
+        state:
+          type: string
+          example: "SP"
+        website:
+          type: string
+          example: "www.pearsontech.com.br"
+        description:
+          type: string
+          example: "Editora especializada em tecnologia - atualizada"
+
+    # ========== USER SCHEMAS ==========
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: "João Silva"
+        email:
+          type: string
+          example: "joao@email.com"
+        cpf:
+          type: string
+          example: "123.456.789-00"
+        phone:
+          type: string
+          example: "(11) 99999-9999"
+        address:
+          type: string
+          example: "Rua A, 123 - São Paulo/SP"
+        birthDate:
+          type: string
+          format: date
+          example: "1990-01-01"
+        registrationDate:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserCreateRequest:
+      type: object
+      required:
+        - name
+        - email
+        - cpf
+      properties:
+        name:
+          type: string
+          example: "João Silva"
+        email:
+          type: string
+          format: email
+          example: "joao@email.com"
+        cpf:
+          type: string
+          example: "123.456.789-00"
+        phone:
+          type: string
+          example: "(11) 99999-9999"
+        address:
+          type: string
+          example: "Rua A, 123 - São Paulo/SP"
+        birthDate:
+          type: string
+          format: date
+          example: "1990-01-01"
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "João Silva Santos"
+        email:
+          type: string
+          format: email
+          example: "joao.santos@email.com"
+        phone:
+          type: string
+          example: "(11) 88888-8888"
+        address:
+          type: string
+          example: "Rua B, 456 - São Paulo/SP"
+        birthDate:
+          type: string
+          format: date
+          example: "1990-01-01"
+
+    # ========== LOAN SCHEMAS ==========
+    LoanResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        userName:
+          type: string
+          example: "João Silva"
+        bookId:
+          type: integer
+          format: int64
+          example: 1
+        bookTitle:
+          type: string
+          example: "Clean Code"
+        loanDate:
+          type: string
+          format: date-time
+        expectedReturnDate:
+          type: string
+          format: date-time
+        actualReturnDate:
+          type: string
+          format: date-time
+          description: "Data real de devolução (preenchida quando o livro é devolvido)"
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - RETURNED
+            - OVERDUE
+            - LOST
+          example: "ACTIVE"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LoanCreateRequest:
+      type: object
+      required:
+        - userId
+        - bookId
+      properties:
+        userId:
+          type: integer
+          format: int64
+          example: 1
+          description: "ID do usuário solicitante"
+        bookId:
+          type: integer
+          format: int64
+          example: 1
+          description: "ID do livro a ser emprestado"
+
+    CreateLoan202Response:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Loan request received and is being processed"
+        processId:
+          type: string
+          example: "loan-process-123e4567-e89b-12d3-a456-426614174000"
+
+    # ========== REVIEW SCHEMAS ==========
+    ReviewCreateRequest:
+      type: object
+      required:
+        - userId
+        - bookId
+        - rating
+      properties:
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        bookId:
+          type: integer
+          format: int64
+          example: 1
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        comment:
+          type: string
+          example: "Excelente livro! Recomendo."
+
+    ReviewUpdateRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 4
+        comment:
+          type: string
+          example: "Muito bom, mas um pouco lento no início."
+
+    ReviewResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        userId:
+          type: integer
+          format: int64
+          example: 1
+        userName:
+          type: string
+          example: "João Silva"
+        bookId:
+          type: integer
+          format: int64
+          example: 1
+        bookTitle:
+          type: string
+          example: "Clean Code"
+        rating:
+          type: integer
+          example: 5
+        comment:
+          type: string
+          example: "Excelente livro! Recomendo."
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
